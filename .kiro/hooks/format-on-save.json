@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Format and lint Python on save",
+      "trigger": "PostFileSave",
+      "description": "Formats and auto-fixes lint on Python files with ruff when saved, keeping the repo clean for reviewers.",
+      "matcher": "\\.py$",
+      "action": {
+        "type": "command",
+        "command": "if command -v ruff >/dev/null 2>&1; then ruff format . && ruff check --fix . 2>&1 | tail -n 20; else echo \"ruff not installed — run: pip install ruff\"; fi",
+        "timeout": 60
+      }
+    }
+  ]
+}

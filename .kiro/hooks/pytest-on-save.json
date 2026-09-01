@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run tests on save",
+      "trigger": "PostFileSave",
+      "description": "Runs the pytest suite whenever a Python file is saved, giving fast feedback while building the agent loop.",
+      "matcher": "\\.py$",
+      "action": {
+        "type": "command",
+        "command": "if [ -d tests ]; then python -m pytest -q --no-header 2>&1 | tail -n 20; else echo \"no tests/ dir yet — skipping\"; fi",
+        "timeout": 120
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lusiscan"
+version = "0.1.0"
+description = "Autonomous AI agent that detects outdated Python dependencies, plans and applies scoped migrations, validates them with tests, and surfaces decisions to a human."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "LusiScan" }]
+
+dependencies = [
+    "strands-agents==0.1.9",
+    "bedrock-agentcore==0.1.0",
+    "bedrock-agentcore-starter-toolkit==0.1.0",
+    "boto3==1.35.76",
+    "libcst==1.5.1",
+    "PyGithub==2.5.0",
+    "requests==2.32.3",
+    "streamlit==1.40.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
