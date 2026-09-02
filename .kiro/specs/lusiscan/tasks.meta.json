@@ -12,6 +12,18 @@
         "chatSessionId": "sess_0a553327-6678-449c-bc0d-44ab18121034",
         "timestamp": 1788302886865
       }
+    ],
+    "2. Prepare the controlled demo repo": [
+      {
+        "executionId": "889f55b4-5e60-4c13-8d19-8e7fb49fa14f",
+        "chatSessionId": "sess_4b740f83-6800-4181-80ff-61c08edac072",
+        "timestamp": 1788305935991
+      },
+      {
+        "executionId": "889f55b4-5e60-4c13-8d19-8e7fb49fa14f",
+        "chatSessionId": "sess_4b740f83-6800-4181-80ff-61c08edac072",
+        "timestamp": 1788307406503
+      }
     ]
   }
 }

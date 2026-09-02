@@ -12,7 +12,7 @@ filling the Devpost form are done outside this list.
   - Add MIT `LICENSE` and a stub `README.md`.
   - _Requirements: 9.1, 9.2_
 
-- [ ] 2. Prepare the controlled demo repo
+- [x] 2. Prepare the controlled demo repo
   - Create a separate demo repo with a `pyproject.toml` pinning an outdated `requests` and `pydantic` 1.x, a tiny fast `pytest` suite, and a minimal GitHub Actions workflow that runs the tests.
   - _Requirements: 4.1, 9.4_
 
