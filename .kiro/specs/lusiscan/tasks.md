@@ -38,7 +38,7 @@ filling the Devpost form are done outside this list.
   - Wrap `bedrock-runtime.converse` for Nova Pro/Lite/Micro; low temperature; request JSON output for planning.
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 6. Implement the migration planner (Nova Pro)
+- [x] 6. Implement the migration planner (Nova Pro)
   - [ ] 6.1 Build the planner prompt and parse a structured plan (`confidence`, `strategy`, `estimated_risk`, `breaking_changes`).
     - _Requirements: 2.3_
   - [ ] 6.2 Retry once on non-JSON output; otherwise default to `low` confidence.
