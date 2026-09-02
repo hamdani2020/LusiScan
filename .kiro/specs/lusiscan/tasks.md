@@ -26,7 +26,7 @@ filling the Devpost form are done outside this list.
   - [x] 3.4 Unit tests for parsing and version comparison.
     - _Requirements: 1.1, 1.2_
 
-- [ ] 4. Implement the changelog fetcher
+- [x] 4. Implement the changelog fetcher
   - [ ] 4.1 Hardcode the package→GitHub-repo mapping for `requests` and `pydantic`; fetch release notes for the version range.
     - _Requirements: 2.1_
   - [ ] 4.2 Summarize notes (Nova Lite) focusing on breaking changes / deprecations / migration steps.
@@ -34,7 +34,7 @@ filling the Devpost form are done outside this list.
   - [ ] 4.3 On fetch failure, signal `low` confidence to the planner.
     - _Requirements: 2.4_
 
-- [ ] 5. Implement the Bedrock/Nova client
+- [x] 5. Implement the Bedrock/Nova client
   - Wrap `bedrock-runtime.converse` for Nova Pro/Lite/Micro; low temperature; request JSON output for planning.
   - _Requirements: 8.1, 8.2, 8.3_
 
