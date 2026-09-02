@@ -24,6 +24,61 @@
         "chatSessionId": "sess_4b740f83-6800-4181-80ff-61c08edac072",
         "timestamp": 1788307406503
       }
+    ],
+    "3.1 Parse declared dependencies from `requirements.txt` / `pyproject.toml` (no install).": [
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788310141096
+      },
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788310629628
+      }
+    ],
+    "3.2 Query PyPI for the latest version and compute outdated packages `[{name, current, latest}]`.": [
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788310633794
+      },
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788311978356
+      }
+    ],
+    "3.3 Handle unparseable manifests by recording an error and continuing.": [
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788311983594
+      },
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788312587537
+      }
+    ],
+    "3.4 Unit tests for parsing and version comparison.": [
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788312592487
+      },
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788312923390
+      }
+    ],
+    "3. Implement the package monitor": [
+      {
+        "executionId": "26c67759-e16f-4031-928c-b4cbd454d087",
+        "chatSessionId": "sess_ac23dcc0-647f-4871-8483-00901047913d",
+        "timestamp": 1788312923597
+      }
     ]
   }
 }

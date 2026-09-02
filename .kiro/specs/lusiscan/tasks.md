@@ -16,14 +16,14 @@ filling the Devpost form are done outside this list.
   - Create a separate demo repo with a `pyproject.toml` pinning an outdated `requests` and `pydantic` 1.x, a tiny fast `pytest` suite, and a minimal GitHub Actions workflow that runs the tests.
   - _Requirements: 4.1, 9.4_
 
-- [ ] 3. Implement the package monitor
-  - [ ] 3.1 Parse declared dependencies from `requirements.txt` / `pyproject.toml` (no install).
+- [x] 3. Implement the package monitor
+  - [x] 3.1 Parse declared dependencies from `requirements.txt` / `pyproject.toml` (no install).
     - _Requirements: 1.1_
-  - [ ] 3.2 Query PyPI for the latest version and compute outdated packages `[{name, current, latest}]`.
+  - [x] 3.2 Query PyPI for the latest version and compute outdated packages `[{name, current, latest}]`.
     - _Requirements: 1.2, 1.3_
-  - [ ] 3.3 Handle unparseable manifests by recording an error and continuing.
+  - [x] 3.3 Handle unparseable manifests by recording an error and continuing.
     - _Requirements: 1.4_
-  - [ ] 3.4 Unit tests for parsing and version comparison.
+  - [x] 3.4 Unit tests for parsing and version comparison.
     - _Requirements: 1.1, 1.2_
 
 - [ ] 4. Implement the changelog fetcher
