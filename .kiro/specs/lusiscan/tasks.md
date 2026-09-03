@@ -46,16 +46,16 @@ filling the Devpost form are done outside this list.
   - [ ] 6.3 Unit test plan parsing against fixture model responses.
     - _Requirements: 2.3_
 
-- [ ] 7. Implement the scoped refactor engine (`libcst`)
-  - [ ] 7.1 Build the pattern registry for the demo packages (pydantic import move + rename; requests = version bump only).
+- [x] 7. Implement the scoped refactor engine (`libcst`)
+  - [x] 7.1 Build the pattern registry for the demo packages (pydantic import move + rename; requests = version bump only).
     - _Requirements: 3.1, 3.2_
-  - [ ] 7.2 Apply AST-aware transforms and re-parse to verify the file is valid Python before writing.
+  - [x] 7.2 Apply AST-aware transforms and re-parse to verify the file is valid Python before writing.
     - _Requirements: 3.1, 3.4_
-  - [ ] 7.3 Leave non-auto-fixable changes untouched and record them as flagged; fall back to `guided_pr` if a fix can't be applied safely.
+  - [x] 7.3 Leave non-auto-fixable changes untouched and record them as flagged; fall back to `guided_pr` if a fix can't be applied safely.
     - _Requirements: 3.3, 3.5_
-  - [ ] 7.4 Validate any model-generated code by AST parsing before use.
+  - [x] 7.4 Validate any model-generated code by AST parsing before use.
     - _Requirements: 8.4_
-  - [ ] 7.5 Unit tests: transforms on fixture files, invalid-AST rejection.
+  - [x] 7.5 Unit tests: transforms on fixture files, invalid-AST rejection.
     - _Requirements: 3.1, 3.4_
 
 - [ ] 8. Implement GitHub integration (branch / commit / PR)

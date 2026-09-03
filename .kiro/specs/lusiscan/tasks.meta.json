@@ -115,6 +115,53 @@
         "chatSessionId": "sess_2b72a770-a917-453a-a32a-caea4c6c53f5",
         "timestamp": 1788393165415
       }
+    ],
+    "7.1 Build the pattern registry for the demo packages (pydantic import move + rename; requests = version bump only).": [
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788393350442
+      },
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788397098487
+      }
+    ],
+    "7.2 Apply AST-aware transforms and re-parse to verify the file is valid Python before writing.": [
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788397099872
+      }
+    ],
+    "7.3 Leave non-auto-fixable changes untouched and record them as flagged; fall back to `guided_pr` if a fix can't be applied safely.": [
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788397101286
+      }
+    ],
+    "7.4 Validate any model-generated code by AST parsing before use.": [
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788397103522
+      }
+    ],
+    "7.5 Unit tests: transforms on fixture files, invalid-AST rejection.": [
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788397104094
+      }
+    ],
+    "7. Implement the scoped refactor engine (`libcst`)": [
+      {
+        "executionId": "2a51f1cf-1a25-43e2-989c-7f2a1d3ad523",
+        "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
+        "timestamp": 1788397104415
+      }
     ]
   }
 }
