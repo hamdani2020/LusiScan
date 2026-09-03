@@ -19,7 +19,7 @@ dependencies = [
     "libcst==1.5.1",
     "PyGithub==2.5.0",
     "requests==2.32.3",
-    "streamlit==1.40.2",
+    "streamlit==1.63.0",
 ]
 
 [project.optional-dependencies]
