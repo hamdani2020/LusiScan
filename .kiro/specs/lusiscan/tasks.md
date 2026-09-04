@@ -58,10 +58,10 @@ filling the Devpost form are done outside this list.
   - [x] 7.5 Unit tests: transforms on fixture files, invalid-AST rejection.
     - _Requirements: 3.1, 3.4_
 
-- [ ] 8. Implement GitHub integration (branch / commit / PR)
-  - [ ] 8.1 Create branch, commit changes, open PR via PyGithub.
+- [x] 8. Implement GitHub integration (branch / commit / PR)
+  - [x] 8.1 Create branch, commit changes, open PR via PyGithub.
     - _Requirements: 5.1, 5.2_
-  - [ ] 8.2 Never merge without a recorded human approval; add merge-on-approval path.
+  - [x] 8.2 Never merge without a recorded human approval; add merge-on-approval path.
     - _Requirements: 5.4, 5.5_
 
 - [ ] 9. Implement the DynamoDB state store

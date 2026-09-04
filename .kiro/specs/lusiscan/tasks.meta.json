@@ -162,6 +162,32 @@
         "chatSessionId": "sess_df76bf34-20b2-49cf-9321-7a2a72b6e812",
         "timestamp": 1788397104415
       }
+    ],
+    "8. Implement GitHub integration (branch / commit / PR)": [
+      {
+        "executionId": "eb201447-501d-4ab6-ad6c-c2e49047834a",
+        "chatSessionId": "sess_4a4a1ced-05f5-4022-b704-e8992f335d78",
+        "timestamp": 1788398390374
+      },
+      {
+        "executionId": "eb201447-501d-4ab6-ad6c-c2e49047834a",
+        "chatSessionId": "sess_4a4a1ced-05f5-4022-b704-e8992f335d78",
+        "timestamp": 1788400781697
+      }
+    ],
+    "8.1 Create branch, commit changes, open PR via PyGithub.": [
+      {
+        "executionId": "eb201447-501d-4ab6-ad6c-c2e49047834a",
+        "chatSessionId": "sess_4a4a1ced-05f5-4022-b704-e8992f335d78",
+        "timestamp": 1788400780446
+      }
+    ],
+    "8.2 Never merge without a recorded human approval; add merge-on-approval path.": [
+      {
+        "executionId": "eb201447-501d-4ab6-ad6c-c2e49047834a",
+        "chatSessionId": "sess_4a4a1ced-05f5-4022-b704-e8992f335d78",
+        "timestamp": 1788400781451
+      }
     ]
   }
 }
