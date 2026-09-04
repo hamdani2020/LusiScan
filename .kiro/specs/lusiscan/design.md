@@ -153,6 +153,19 @@ if __name__ == "__main__":
 Deploy: `agentcore configure --entrypoint src/agentcore_app.py` →
 `agentcore launch` → `agentcore invoke '{"repo_name": "..."}'`.
 
+### Infrastructure as Code (Terraform)
+
+Supporting AWS resources — the DynamoDB state table and the EventBridge
+Scheduler that invokes the AgentCore runtime on a schedule — are provisioned
+with **Terraform**, living in `infrastructure/`. Terraform is chosen over
+SAM/CloudFormation specifically for the hackathon lifecycle: everything is kept
+in a single root module and state file so the whole stack can be torn down with
+one `terraform destroy` once the event is over, leaving no lingering AWS
+resources (or cost). The AWS provider version is pinned; the backend is local by
+default (documented if switched to remote). Secrets are **not** managed by
+Terraform state — they continue to be read from Secrets Manager at runtime
+(R6.5) so no secret material ever lands in `.tfstate`.
+
 ### Streamlit control panel
 
 Reads pending migrations from DynamoDB, renders package/diff/plan/tests, and

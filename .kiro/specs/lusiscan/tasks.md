@@ -64,7 +64,7 @@ filling the Devpost form are done outside this list.
   - [x] 8.2 Never merge without a recorded human approval; add merge-on-approval path.
     - _Requirements: 5.4, 5.5_
 
-- [ ] 9. Implement the DynamoDB state store
+- [x] 9. Implement the DynamoDB state store
   - [ ] 9.1 Single-table store: write/read Migration, Decision, Run-log entities with `status` transitions.
     - _Requirements: 6.3, 5.5_
   - [ ] 9.2 Unit test status transitions (`pending_review` → approved/ignored → merged/closed).
@@ -116,10 +116,12 @@ filling the Devpost form are done outside this list.
   - Deploy to Streamlit Community Cloud with a read-mostly scoped IAM user; verify the public URL drives the live agent state.
   - _Requirements: 7.5, 9.5_
 
-- [ ] 16. Supporting infrastructure
-  - SAM/CloudFormation for the DynamoDB state table + EventBridge Scheduler that invokes the AgentCore runtime on a schedule.
+- [ ] 16. Supporting infrastructure (Terraform)
+  - Author Terraform in `infrastructure/` for the DynamoDB state table + EventBridge Scheduler that invokes the AgentCore runtime on a schedule; keep all provisioned resources in one root module/state so the whole stack tears down with a single `terraform destroy` after the hackathon.
+  - Pin the AWS provider version and use a local backend (or a clearly documented remote backend) so state is easy to locate and clean up.
+  - Document `terraform init` / `terraform apply` / `terraform destroy` in the README.
   - _Requirements: 6.3, 6.4_
 
 - [ ] 17. Submission polish
-  - Architecture diagram; finalize README (setup + run + demo steps); confirm MIT license visible; dry-run both scenarios through the live stack.
+  - Architecture diagram; finalize README (setup + run + demo steps, including the Terraform `init`/`apply`/`destroy` teardown); confirm MIT license visible; dry-run both scenarios through the live stack, then verify `terraform destroy` cleanly removes the stack.
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
