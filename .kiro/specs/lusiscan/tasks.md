@@ -27,7 +27,7 @@ filling the Devpost form are done outside this list.
     - _Requirements: 1.1, 1.2_
 
 - [x] 4. Implement the changelog fetcher
-  - [ ] 4.1 Hardcode the package→GitHub-repo mapping for `requests` and `pydantic`; fetch release notes for the version range.
+  - [-] 4.1 Hardcode the package→GitHub-repo mapping for `requests` and `pydantic`; fetch release notes for the version range.
     - _Requirements: 2.1_
   - [ ] 4.2 Summarize notes (Nova Lite) focusing on breaking changes / deprecations / migration steps.
     - _Requirements: 2.2_
@@ -70,7 +70,7 @@ filling the Devpost form are done outside this list.
   - [ ] 9.2 Unit test status transitions (`pending_review` → approved/ignored → merged/closed).
     - _Requirements: 5.5_
 
-- [ ] 10. Wire the orchestrator (Strands agent loop)
+- [x] 10. Wire the orchestrator (Strands agent loop)
   - [ ] 10.1 Define stages as `@tool` functions and compose Monitor→Planner→Executor→Validator; invoke agents by calling them directly.
     - _Requirements: 1.x, 2.x, 3.x_
   - [ ] 10.2 Persist migrations and honor recorded decisions on each cycle.
@@ -78,7 +78,7 @@ filling the Devpost form are done outside this list.
   - [ ] 10.3 Integration test: full loop locally on both demo packages.
     - _Requirements: 9.4_
 
-- [ ] 11. Deploy to AgentCore Runtime (do this as soon as task 10 works)
+- [~] 11. Deploy to AgentCore Runtime (do this as soon as task 10 works)
   - [ ] 11.1 Add `src/agentcore_app.py` (`BedrockAgentCoreApp` + `@app.entrypoint`); test locally on `:8080`.
     - _Requirements: 6.1, 6.2_
   - [ ] 11.2 `agentcore configure` + `agentcore launch`; grant the runtime role Bedrock, Secrets Manager, and DynamoDB access.
