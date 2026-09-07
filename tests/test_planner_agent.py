@@ -284,6 +284,51 @@ class TestRealJsonExtraction:
         # Confirms the retry actually happened (two underlying converse calls).
         assert len(model.client.calls) == 2
 
+    def test_realistic_pydantic_major_upgrade_fixture_parses(self) -> None:
+        # The human-in-the-loop demo scenario (pydantic 1 -> 2): a realistic Nova
+        # Pro reply mixing prose with a fenced JSON plan carrying several breaking
+        # changes. Exercises the full R2.3 shape end-to-end through the real
+        # converse_json extraction over the pydantic changelog.
+        reply = (
+            "This is a major version upgrade with significant API changes, so I "
+            "recommend routing it to a human.\n\n"
+            "```json\n"
+            "{\n"
+            '  "confidence": "low",\n'
+            '  "strategy": "human_required",\n'
+            '  "estimated_risk": "high",\n'
+            '  "breaking_changes": [\n'
+            '    "BaseSettings moved to pydantic-settings",\n'
+            '    "validator replaced by field_validator",\n'
+            '    "Config class replaced by model_config"\n'
+            "  ],\n"
+            '  "reasoning": "pydantic 2 is a full rewrite requiring code changes"\n'
+            "}\n"
+            "```\n"
+        )
+        changelog = _changelog(
+            package="pydantic",
+            current="1.10.13",
+            target="2.5.0",
+            summary="v2 is a rewrite: validators, config, and settings all changed",
+        )
+        plan = pa.plan_migration(changelog, model=RealParsingModel([reply]))
+        assert plan["package"] == "pydantic"
+        assert plan["current"] == "1.10.13"
+        assert plan["target"] == "2.5.0"
+        assert plan["confidence"] == "low"
+        assert plan["strategy"] == "human_required"
+        assert plan["estimated_risk"] == "high"
+        assert plan["breaking_changes"] == [
+            "BaseSettings moved to pydantic-settings",
+            "validator replaced by field_validator",
+            "Config class replaced by model_config",
+        ]
+        assert plan["reasoning"] == (
+            "pydantic 2 is a full rewrite requiring code changes"
+        )
+        assert plan["error"] is None
+
 
 # --- Invalid / missing fields default to low confidence (task 6.2, 6.3) --
 

@@ -205,6 +205,44 @@ class TestTransitionStatusRejections:
         stored = state.get_migration(REPO, "pydantic", "2.9.2")
         assert stored["status"] == st.STATUS_PENDING_REVIEW
 
+    def test_rejected_transition_issues_no_write(
+        self, state: StateStore, table: FakeTable
+    ) -> None:
+        # The store promises a rejected move "writes nothing" — assert the
+        # update path was never reached, not just that status looks unchanged.
+        _seed_migration(state)
+        with pytest.raises(InvalidStatusTransition):
+            state.transition_status(REPO, "pydantic", "2.9.2", st.STATUS_MERGED)
+        assert table.update_calls == []
+
+    def test_no_op_self_transition_is_rejected(self, state: StateStore) -> None:
+        # A no-op (pending -> pending) is illegal against stored state too.
+        _seed_migration(state)
+        with pytest.raises(InvalidStatusTransition) as exc:
+            state.transition_status(
+                REPO, "pydantic", "2.9.2", st.STATUS_PENDING_REVIEW
+            )
+        assert exc.value.from_status == st.STATUS_PENDING_REVIEW
+        assert exc.value.to_status == st.STATUS_PENDING_REVIEW
+
+    def test_unknown_target_status_is_rejected(self, state: StateStore) -> None:
+        # An unrecognized target status is rejected by the machine, unwritten.
+        _seed_migration(state)
+        with pytest.raises(InvalidStatusTransition):
+            state.transition_status(REPO, "pydantic", "2.9.2", "bogus")
+        assert (
+            state.get_migration(REPO, "pydantic", "2.9.2")["status"]
+            == st.STATUS_PENDING_REVIEW
+        )
+
+    def test_cannot_move_out_of_closed_terminal_state(self, state: StateStore) -> None:
+        # The ignored lane's terminal (closed) is a dead end, like merged.
+        _seed_migration(state)
+        state.transition_status(REPO, "pydantic", "2.9.2", st.STATUS_IGNORED)
+        state.transition_status(REPO, "pydantic", "2.9.2", st.STATUS_CLOSED)
+        with pytest.raises(InvalidStatusTransition):
+            state.transition_status(REPO, "pydantic", "2.9.2", st.STATUS_IGNORED)
+
     def test_cannot_move_out_of_terminal_state(self, state: StateStore) -> None:
         _seed_migration(state)
         state.transition_status(REPO, "pydantic", "2.9.2", st.STATUS_APPROVED)
@@ -270,6 +308,19 @@ class TestPutDecision:
         item = state.put_decision(REPO, "MIG#pydantic#2.9.2", st.STATUS_APPROVED)
         assert item["timestamp"]  # non-empty ISO string
         assert item["decision"] == st.STATUS_APPROVED
+
+    def test_written_decision_reads_back(self, state: StateStore) -> None:
+        mig_id = st.migration_id("pydantic", "2.9.2")
+        state.put_decision(REPO, mig_id, st.STATUS_IGNORED)
+        decision = state.get_decision(REPO, mig_id)
+        assert decision is not None
+        assert decision["entity"] == "decision"
+        assert decision["decision"] == st.STATUS_IGNORED
+        assert decision["migration_id"] == mig_id
+        assert decision["sk"] == "DEC#MIG#pydantic#2.9.2"
+
+    def test_get_missing_decision_returns_none(self, state: StateStore) -> None:
+        assert state.get_decision(REPO, "MIG#nope#0") is None
 
 
 # --- Migration entity write/read (task 9.1, R6.3) -------------------------

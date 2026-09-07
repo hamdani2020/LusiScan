@@ -27,11 +27,11 @@ filling the Devpost form are done outside this list.
     - _Requirements: 1.1, 1.2_
 
 - [x] 4. Implement the changelog fetcher
-  - [-] 4.1 Hardcode the package→GitHub-repo mapping for `requests` and `pydantic`; fetch release notes for the version range.
+  - [x] 4.1 Hardcode the package→GitHub-repo mapping for `requests` and `pydantic`; fetch release notes for the version range.
     - _Requirements: 2.1_
-  - [ ] 4.2 Summarize notes (Nova Lite) focusing on breaking changes / deprecations / migration steps.
+  - [x] 4.2 Summarize notes (Nova Lite) focusing on breaking changes / deprecations / migration steps.
     - _Requirements: 2.2_
-  - [ ] 4.3 On fetch failure, signal `low` confidence to the planner.
+  - [x] 4.3 On fetch failure, signal `low` confidence to the planner.
     - _Requirements: 2.4_
 
 - [x] 5. Implement the Bedrock/Nova client
@@ -39,11 +39,11 @@ filling the Devpost form are done outside this list.
   - _Requirements: 8.1, 8.2, 8.3_
 
 - [x] 6. Implement the migration planner (Nova Pro)
-  - [ ] 6.1 Build the planner prompt and parse a structured plan (`confidence`, `strategy`, `estimated_risk`, `breaking_changes`).
+  - [x] 6.1 Build the planner prompt and parse a structured plan (`confidence`, `strategy`, `estimated_risk`, `breaking_changes`).
     - _Requirements: 2.3_
-  - [ ] 6.2 Retry once on non-JSON output; otherwise default to `low` confidence.
+  - [x] 6.2 Retry once on non-JSON output; otherwise default to `low` confidence.
     - _Requirements: 2.4, 8.3_
-  - [ ] 6.3 Unit test plan parsing against fixture model responses.
+  - [x] 6.3 Unit test plan parsing against fixture model responses.
     - _Requirements: 2.3_
 
 - [x] 7. Implement the scoped refactor engine (`libcst`)
@@ -65,23 +65,23 @@ filling the Devpost form are done outside this list.
     - _Requirements: 5.4, 5.5_
 
 - [x] 9. Implement the DynamoDB state store
-  - [ ] 9.1 Single-table store: write/read Migration, Decision, Run-log entities with `status` transitions.
+  - [x] 9.1 Single-table store: write/read Migration, Decision, Run-log entities with `status` transitions.
     - _Requirements: 6.3, 5.5_
-  - [ ] 9.2 Unit test status transitions (`pending_review` → approved/ignored → merged/closed).
+  - [x] 9.2 Unit test status transitions (`pending_review` → approved/ignored → merged/closed).
     - _Requirements: 5.5_
 
 - [x] 10. Wire the orchestrator (Strands agent loop)
-  - [ ] 10.1 Define stages as `@tool` functions and compose Monitor→Planner→Executor→Validator; invoke agents by calling them directly.
+  - [x] 10.1 Define stages as `@tool` functions and compose Monitor→Planner→Executor→Validator; invoke agents by calling them directly.
     - _Requirements: 1.x, 2.x, 3.x_
-  - [ ] 10.2 Persist migrations and honor recorded decisions on each cycle.
+  - [x] 10.2 Persist migrations and honor recorded decisions on each cycle.
     - _Requirements: 5.5, 6.3_
-  - [ ] 10.3 Integration test: full loop locally on both demo packages.
+  - [x] 10.3 Integration test: full loop locally on both demo packages.
     - _Requirements: 9.4_
 
 - [~] 11. Deploy to AgentCore Runtime (do this as soon as task 10 works)
-  - [ ] 11.1 Add `src/agentcore_app.py` (`BedrockAgentCoreApp` + `@app.entrypoint`); test locally on `:8080`.
+  - [x] 11.1 Add `src/agentcore_app.py` (`BedrockAgentCoreApp` + `@app.entrypoint`); test locally on `:8080`.
     - _Requirements: 6.1, 6.2_
-  - [ ] 11.2 `agentcore configure` + `agentcore launch`; grant the runtime role Bedrock, Secrets Manager, and DynamoDB access.
+  - [-] 11.2 `agentcore configure` + `agentcore launch`; grant the runtime role Bedrock, Secrets Manager, and DynamoDB access.
     - _Requirements: 6.1, 6.5_
   - [ ] 11.3 `agentcore invoke` both demo scenarios end-to-end on the live runtime; fix packaging/IAM issues.
     - _Requirements: 6.2, 9.4_

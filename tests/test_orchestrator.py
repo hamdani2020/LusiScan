@@ -365,8 +365,14 @@ class TestFullLoopBothDemoPackages:
         assert req is not None
         assert req["status"] == st.STATUS_PENDING_REVIEW
         assert req["confidence"] == "high"
+        assert req["strategy"] == "auto_fix"
         # A version bump was applied to the manifest → there are changes → a PR.
         assert req["pr_number"] is not None
+        # The "safe auto-fix" side of R9.4, end-to-end: the manifest pin was
+        # actually bumped in the diff (R3.2) — the loop produced a concrete,
+        # reviewable change, not just a plan.
+        assert "requests==2.31.0" in req["diff"]
+        assert "requests==2.32.3" in req["diff"]
 
         # pydantic: major upgrade → low confidence / guided_pr, pending_review,
         # with flagged breaking changes surfaced for human judgment (R5.2).
@@ -377,6 +383,18 @@ class TestFullLoopBothDemoPackages:
         assert pyd["strategy"] == "guided_pr"
         assert pyd["flagged"]  # at least one flagged breaking change
         assert pyd["pr_number"] is not None
+        # The "human-in-the-loop major upgrade" side of R9.4, end-to-end. A
+        # guided_pr still carries the safe manifest version bump (R3.2)...
+        assert "pydantic==1.10.13" in pyd["diff"]
+        assert "pydantic==2.0.0" in pyd["diff"]
+        # ...but the risky source code is left UNTOUCHED — no auto-fix transform
+        # fired and the source file never appears in the diff (R3.3 / R5.2): the
+        # class-based Config restructure is surfaced as a flag for a human, not
+        # rewritten automatically.
+        assert pyd["applied"] == []
+        assert "demo_app/models.py" not in pyd["diff"]
+        flagged_descriptions = " ".join(f["description"] for f in pyd["flagged"])
+        assert "Config" in flagged_descriptions
 
         # A PR was opened for BOTH packages (R5.1 / R5.2).
         assert len(repo.created_pulls) == 2
@@ -447,6 +465,111 @@ class TestFullLoopBothDemoPackages:
         pull = repo.get_pull(pyd_pr_number)
         assert pull.state == "closed"
         assert pull.merged is False
+
+    def test_no_decision_leaves_pr_open_and_migration_pending(self) -> None:
+        # The "review / none" lane (R5.5): when a human records no decision (or
+        # asks for further review), the orchestrator leaves the PR open and the
+        # migration untouched at ``pending_review`` on the next cycle — nothing
+        # is merged or closed.
+        table = FakeTable()
+        repo = FakeRepository()
+        orch = _make_orchestrator(table, repo)
+        orch.run()
+
+        store = StateStore(table=table)
+        req_pr_number = store.get_migration(REPO, "requests", "2.32.3")["pr_number"]
+        pyd_pr_number = store.get_migration(REPO, "pydantic", "2.0.0")["pr_number"]
+
+        # No decision is recorded for either migration.
+        # Cycle 2: nothing actionable, so no decision-actions are produced and
+        # both migrations stay pending with their PRs open.
+        orch2 = _make_orchestrator(table, repo)
+        result2 = orch2.run()
+
+        assert result2["decisions"] == []
+
+        req = store.get_migration(REPO, "requests", "2.32.3")
+        pyd = store.get_migration(REPO, "pydantic", "2.0.0")
+        assert req["status"] == st.STATUS_PENDING_REVIEW
+        assert pyd["status"] == st.STATUS_PENDING_REVIEW
+
+        # Neither PR was merged or closed — both remain open (R5.4).
+        for number in (req_pr_number, pyd_pr_number):
+            pull = repo.get_pull(number)
+            assert pull.merged is False
+            assert pull.state == "open"
+
+    def test_explicit_review_decision_leaves_pr_open(self) -> None:
+        # The ``_act_on_decision`` "leave open" guard (R5.4): if a decision that
+        # is neither ``approved`` nor ``ignored`` is present (e.g. a ``review``
+        # value written directly, since put_decision only accepts approve/ignore
+        # from the control panel), the orchestrator must NOT merge or close —
+        # it records a ``left_open`` action and leaves the migration pending.
+        table = FakeTable()
+        repo = FakeRepository()
+        orch = _make_orchestrator(table, repo)
+        orch.run()
+
+        store = StateStore(table=table)
+        req = store.get_migration(REPO, "requests", "2.32.3")
+        req_pr_number = req["pr_number"]
+
+        # Write a raw "review" decision item directly (bypassing put_decision's
+        # approve/ignore validation) to exercise the orchestrator's leave-open
+        # branch for a non-terminal decision value.
+        mig_id = st.migration_id("requests", "2.32.3")
+        table.put_item(
+            Item={
+                "pk": st.repo_pk(REPO),
+                "sk": st.decision_sk(mig_id),
+                "entity": "decision",
+                "migration_id": mig_id,
+                "decision": "review",
+            }
+        )
+
+        orch2 = _make_orchestrator(table, repo)
+        result2 = orch2.run()
+
+        actions = {a["package"]: a for a in result2["decisions"]}
+        assert "requests" in actions
+        assert actions["requests"]["decision"] == "review"
+        assert actions["requests"]["merged"] is False
+        assert actions["requests"]["pr_state"] == "left_open"
+        assert actions["requests"]["status"] == st.STATUS_PENDING_REVIEW
+
+        # The migration stays pending and the PR is neither merged nor closed.
+        assert (
+            store.get_migration(REPO, "requests", "2.32.3")["status"]
+            == st.STATUS_PENDING_REVIEW
+        )
+        pull = repo.get_pull(req_pr_number)
+        assert pull.merged is False
+        assert pull.state == "open"
+
+    def test_a_run_log_is_persisted_on_every_cycle(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # R6.3: each cycle persists a run log. After two cycles there are two
+        # run-log entries recording the run outcome, so the state table is a
+        # durable audit trail of every pass. Run-log sort keys are timestamped
+        # at seconds precision, so we feed distinct, monotonically increasing
+        # timestamps to keep the two entries from colliding on the same key.
+        clock = iter(
+            ["2024-01-01T00:00:00Z", "2024-01-01T00:00:01Z", "2024-01-01T00:00:02Z"]
+        )
+        monkeypatch.setattr(st, "_now_iso", lambda: next(clock))
+
+        table = FakeTable()
+        repo = FakeRepository()
+
+        _make_orchestrator(table, repo).run()
+        _make_orchestrator(table, repo).run()
+
+        store = StateStore(table=table)
+        logs = store.list_run_logs(REPO)
+        assert len(logs) == 2
+        assert all(log["outcome"] == "completed" for log in logs)
 
 
 # --- Strands import-guard sanity (task 10.1) -------------------------------
