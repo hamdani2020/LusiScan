@@ -1,0 +1,14 @@
+# Runtime dependencies for the LusiScan AgentCore Runtime container image
+# (task 11.2). Consumed by `agentcore configure --requirements-file
+# requirements.txt`, which bakes `pip install -r requirements.txt` into the
+# generated Dockerfile. Pins mirror pyproject.toml.
+#
+# Excluded on purpose:
+#   - bedrock-agentcore-starter-toolkit: build-time CLI, not needed at runtime.
+#   - streamlit: the local operator dashboard, not part of the agent loop.
+strands-agents==0.1.9
+bedrock-agentcore==0.1.0
+boto3==1.35.76
+libcst==1.5.1
+PyGithub==2.5.0
+requests==2.32.3

@@ -21,3 +21,4 @@ htmlcov/
 # Local env / secrets (never commit secrets — read from Secrets Manager at runtime)
 .env
 *.local
+.bedrock_agentcore.yaml

@@ -362,6 +362,18 @@
         "executionId": "e0bdc64a-819f-4b77-b5e0-6bb8b57d4d81",
         "chatSessionId": "sess_41faac72-ef23-401f-a097-7e0ecd3e7a74",
         "timestamp": 1788781152062
+      },
+      {
+        "executionId": "e0bdc64a-819f-4b77-b5e0-6bb8b57d4d81",
+        "chatSessionId": "sess_41faac72-ef23-401f-a097-7e0ecd3e7a74",
+        "timestamp": 1788782999650
+      }
+    ],
+    "11.3 `agentcore invoke` both demo scenarios end-to-end on the live runtime; fix packaging/IAM issues.": [
+      {
+        "executionId": "62d747cf-5d65-486a-89da-e86e1c3ee91c",
+        "chatSessionId": "sess_942706dc-a69e-4b14-8507-fe78cfe9a09e",
+        "timestamp": 1788788083151
       }
     ]
   }
