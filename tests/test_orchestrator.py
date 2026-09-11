@@ -44,6 +44,25 @@ from src.state.store import StateStore
 # --- Fake DynamoDB table (reused convention from test_state_store.py) ------
 
 
+def _extract_pk_prefix(key_condition) -> tuple[str, str]:
+    """Pull ``(pk, sk_prefix)`` out of a boto3 ``Key`` condition.
+
+    Mirrors the real query the store issues:
+    ``Key("pk").eq(pk) & Key("sk").begins_with(sk_prefix)``.
+    """
+    expr = key_condition.get_expression()
+    pk = sk_prefix = None
+    for sub in expr["values"]:
+        sub_expr = sub.get_expression()
+        name = sub_expr["values"][0].name
+        value = sub_expr["values"][1]
+        if name == "pk":
+            pk = value
+        elif name == "sk":
+            sk_prefix = value
+    return pk, sk_prefix
+
+
 class FakeTable:
     """In-memory stand-in for a boto3 DynamoDB ``Table`` (see test_state_store)."""
 
@@ -73,7 +92,12 @@ class FakeTable:
             return {"Attributes": dict(item)}
         return {}
 
-    def query(self, *, pk: str, sk_prefix: str) -> dict:
+    def query(self, *, KeyConditionExpression=None, pk=None, sk_prefix=None) -> dict:
+        # Support both the no-boto3 fallback (pk=/sk_prefix=) and the real boto3
+        # path (KeyConditionExpression=...) so the fake works whether or not
+        # boto3 is importable in the test environment.
+        if KeyConditionExpression is not None:
+            pk, sk_prefix = _extract_pk_prefix(KeyConditionExpression)
         matched = [
             dict(item)
             for (ipk, isk), item in self.items.items()

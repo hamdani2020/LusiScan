@@ -8,7 +8,7 @@
 #   - streamlit: the local operator dashboard, not part of the agent loop.
 strands-agents==0.1.9
 bedrock-agentcore==0.1.0
-boto3==1.35.76
+boto3>=1.39.0
 libcst==1.5.1
 PyGithub==2.5.0
 requests==2.32.3

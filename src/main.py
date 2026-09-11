@@ -169,7 +169,7 @@ def fetch_changelog(
     current: str,
     target: str,
     *,
-    model: changelog_tools.ChangelogModel,
+    model: Any,  # injected changelog_tools.ChangelogModel (see docstring)
 ) -> dict:
     """Planner stage (part 1): fetch + summarize a package's changelog (R2.1/2.2).
 
@@ -198,7 +198,7 @@ def fetch_changelog(
 def plan_migration(
     changelog: dict,
     *,
-    model: planner_agent.PlannerModel,
+    model: Any,  # injected planner_agent.PlannerModel (see docstring)
     code: Optional[str] = None,
 ) -> dict:
     """Planner stage (part 2): turn a changelog into a structured plan (R2.3/8.x).
@@ -270,7 +270,7 @@ def _stub_validator(branch: str) -> dict:
 
 
 @tool
-def validate_branch(branch: str, *, validator: Optional[Validator] = None) -> dict:
+def validate_branch(branch: str, *, validator: Any = None) -> dict:
     """Validator stage: run/read tests for ``branch`` via an injectable validator.
 
     Designed around a seam so task 12 can plug in the real GitHub-Actions poller

@@ -83,7 +83,7 @@ filling the Devpost form are done outside this list.
     - _Requirements: 6.1, 6.2_
   - [x] 11.2 `agentcore configure` + `agentcore launch`; grant the runtime role Bedrock, Secrets Manager, and DynamoDB access.
     - _Requirements: 6.1, 6.5_
-  - [ ] 11.3 `agentcore invoke` both demo scenarios end-to-end on the live runtime; fix packaging/IAM issues.
+  - [x] 11.3 `agentcore invoke` both demo scenarios end-to-end on the live runtime; fix packaging/IAM issues.
     - _Requirements: 6.2, 9.4_
   - [ ] 11.4 Read secrets from Secrets Manager at runtime (no committed secrets).
     - _Requirements: 6.5_

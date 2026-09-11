@@ -241,12 +241,31 @@ def open_pull_request(
         base: The branch to merge into (defaults to ``main``).
 
     Returns:
-        The created ``PullRequest``.
+        The created ``PullRequest`` (or the existing open one if a PR for
+        ``head`` already exists — see below).
 
     Raises:
-        GithubException: On GitHub API errors opening the PR.
+        GithubException: On GitHub API errors other than an already-exists
+            (422) conflict, which is handled by returning the existing PR so a
+            re-run of the same migration cycle stays idempotent.
     """
-    return repo.create_pull(title=title, body=body, head=head, base=base)
+    try:
+        return repo.create_pull(title=title, body=body, head=head, base=base)
+    except GithubException as exc:
+        # 422 = a PR already exists for this head branch. Reuse it rather than
+        # failing the run, so re-invoking the same demo scenario is idempotent
+        # (mirrors the create_branch already-exists handling).
+        if exc.status == 422:
+            # ``head`` for the list filter must be namespaced ``owner:branch``.
+            owner = repo.owner.login
+            existing = repo.get_pulls(state="open", head=f"{owner}:{head}")
+            for pull in existing:
+                return pull
+            # Fall back to any open PR whose head ref matches the branch name.
+            for pull in repo.get_pulls(state="open"):
+                if pull.head.ref == head:
+                    return pull
+        raise
 
 
 # --- PR body composition for the two confidence tiers (R5.1, R5.2) --------

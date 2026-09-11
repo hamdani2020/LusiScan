@@ -65,6 +65,8 @@ import os
 from typing import Any, Callable, Optional
 
 from src.main import DepGuardOrchestrator
+from src.models.bedrock_client import BedrockClient
+from src.tools import github_tools
 
 
 # --- BedrockAgentCoreApp import guard (task 11.1) -------------------------
@@ -123,6 +125,67 @@ ENV_STATE_TABLE_FALLBACK = "STATE_TABLE_NAME"
 ENV_GITHUB_TOKEN = "GITHUB_TOKEN"
 
 
+def _fetch_repo_files(repo: str, github_token: Optional[str]) -> tuple[
+    Optional[str],
+    Optional[Callable[[dict], tuple[str, str]]],
+    Optional[Callable[[dict], dict[str, str]]],
+]:
+    """Materialize the target repo's manifest + source so the loop runs live.
+
+    The Monitor (:func:`src.main.scan_packages`) reads a *filesystem* manifest,
+    and the Executor transforms *source files* passed via provider seams. On the
+    AgentCore runtime the repo isn't checked out, so we fetch what the loop needs
+    directly from GitHub (PyGithub, authenticated with the runtime token) and:
+
+    - write the fetched ``pyproject.toml`` into a temp dir returned as
+      ``repo_path`` (so the Monitor detects the outdated pins), and
+    - wire a ``manifest_provider`` (version-bump the same manifest) and a
+      ``source_provider`` (the Python sources the auto-fix transforms rewrite).
+
+    Only ``pyproject.toml`` and any ``demo_app/*.py`` sources are fetched — the
+    demo scope (design.md → "controlled demo repo"). Any fetch failure degrades
+    to ``(None, None, None)`` so the caller falls back to scanning ``repo`` as a
+    local path rather than crashing (R1.4). No secret material is logged here.
+
+    Returns:
+        ``(repo_path, manifest_provider, source_provider)``; each element is
+        ``None`` when unavailable.
+    """
+    import tempfile
+    from pathlib import Path
+
+    try:
+        client = github_tools.get_client(token=github_token)
+        gh_repo = client.get_repo(repo)
+
+        manifest_content = gh_repo.get_contents("pyproject.toml").decoded_content.decode(
+            "utf-8"
+        )
+
+        # Fetch the Python sources under demo_app/ (the auto-fix transform scope).
+        source_files: dict[str, str] = {}
+        try:
+            for entry in gh_repo.get_contents("demo_app"):
+                if entry.type == "file" and entry.path.endswith(".py"):
+                    source_files[entry.path] = entry.decoded_content.decode("utf-8")
+        except Exception:  # noqa: BLE001 - no demo_app/ is fine (version-bump-only)
+            pass
+    except Exception:  # noqa: BLE001 - any GitHub failure: fall back to local scan
+        return None, None, None
+
+    # Write the manifest into a temp dir for the Monitor to scan.
+    tmp_dir = tempfile.mkdtemp(prefix="lusiscan-repo-")
+    (Path(tmp_dir) / "pyproject.toml").write_text(manifest_content, encoding="utf-8")
+
+    def manifest_provider(_plan: dict) -> tuple[str, str]:
+        return ("pyproject.toml", manifest_content)
+
+    def source_provider(_plan: dict) -> dict[str, str]:
+        return dict(source_files)
+
+    return tmp_dir, manifest_provider, source_provider
+
+
 def _build_orchestrator(repo: str, **overrides: Any) -> DepGuardOrchestrator:
     """Construct the orchestrator for ``repo``, wiring runtime config from env.
 
@@ -140,7 +203,26 @@ def _build_orchestrator(repo: str, **overrides: Any) -> DepGuardOrchestrator:
     kwargs: dict[str, Any] = {
         "table_name": table_name,
         "github_token": github_token,
+        # Wire the real Nova reasoning client so the loop can actually plan and
+        # execute migrations on the live runtime. ``BedrockClient`` satisfies
+        # both PlannerModel (``converse_json``) and ChangelogModel
+        # (``summarize``); it builds its ``bedrock-runtime`` client lazily using
+        # the runtime role's credentials (R8.1/8.2) — no secret material here.
+        # Tests override this via ``overrides`` to inject a fake model.
+        "planner_model": BedrockClient(region_name=os.environ.get("AWS_REGION")),
     }
+
+    # Materialize the target repo's manifest + source from GitHub so the Monitor
+    # detects the outdated pins and the Executor has the sources to transform.
+    # Degrades to a plain local scan of ``repo`` if the fetch fails.
+    repo_path, manifest_provider, source_provider = _fetch_repo_files(
+        repo, github_token
+    )
+    if repo_path is not None:
+        kwargs["repo_path"] = repo_path
+        kwargs["manifest_provider"] = manifest_provider
+        kwargs["source_provider"] = source_provider
+
     kwargs.update(overrides)
     return DepGuardOrchestrator(repo_name=repo, **kwargs)
 

@@ -29,6 +29,27 @@ from src.state.store import InvalidStatusTransition, StateStore
 # --- Fake DynamoDB table --------------------------------------------------
 
 
+def _extract_pk_prefix(key_condition) -> tuple[str, str]:
+    """Pull ``(pk, sk_prefix)`` out of a boto3 ``Key`` condition.
+
+    Mirrors the real query the store issues:
+    ``Key("pk").eq(pk) & Key("sk").begins_with(sk_prefix)``. Parses the public
+    ``get_expression()`` tree so the fake supports the real boto3 path without
+    depending on boto3 internals.
+    """
+    expr = key_condition.get_expression()
+    pk = sk_prefix = None
+    for sub in expr["values"]:
+        sub_expr = sub.get_expression()
+        name = sub_expr["values"][0].name
+        value = sub_expr["values"][1]
+        if name == "pk":
+            pk = value
+        elif name == "sk":
+            sk_prefix = value
+    return pk, sk_prefix
+
+
 class FakeTable:
     """An in-memory stand-in for a boto3 DynamoDB ``Table``.
 
@@ -70,8 +91,13 @@ class FakeTable:
             return {"Attributes": dict(item)}
         return {}
 
-    def query(self, *, pk: str, sk_prefix: str) -> dict:
-        # Matches the no-boto3 fallback path in StateStore._query_prefix.
+    def query(self, *, KeyConditionExpression=None, pk=None, sk_prefix=None) -> dict:
+        # Support BOTH call styles StateStore._query_prefix may use:
+        #  - the no-boto3 fallback: query(pk=..., sk_prefix=...)
+        #  - the real boto3 path:   query(KeyConditionExpression=Key("pk").eq(pk)
+        #                                   & Key("sk").begins_with(sk_prefix))
+        if KeyConditionExpression is not None:
+            pk, sk_prefix = _extract_pk_prefix(KeyConditionExpression)
         matched = [
             dict(item)
             for (ipk, isk), item in self.items.items()
