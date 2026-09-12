@@ -66,7 +66,7 @@ from typing import Any, Callable, Optional
 
 from src.main import DepGuardOrchestrator
 from src.models.bedrock_client import BedrockClient
-from src.tools import github_tools
+from src.tools import github_tools, validation_tools
 
 
 # --- BedrockAgentCoreApp import guard (task 11.1) -------------------------
@@ -298,6 +298,14 @@ def _build_orchestrator(repo: str, **overrides: Any) -> DepGuardOrchestrator:
         kwargs["repo_path"] = repo_path
         kwargs["manifest_provider"] = manifest_provider
         kwargs["source_provider"] = source_provider
+
+    # Validator (task 12): poll the target repo's GitHub Actions run for each
+    # migration branch and classify pass/fail (R4.1–4.5), with a local pytest
+    # sandbox fallback if the Actions round-trip is unavailable (R4.6). Uses the
+    # same token/Secrets-Manager resolution as the rest of the loop (R6.5).
+    kwargs["validator"] = validation_tools.make_validator(
+        repo, token=github_token, local_fallback_dir=repo_path
+    )
 
     kwargs.update(overrides)
     return DepGuardOrchestrator(repo_name=repo, **kwargs)

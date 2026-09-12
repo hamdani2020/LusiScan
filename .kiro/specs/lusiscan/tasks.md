@@ -88,14 +88,14 @@ filling the Devpost form are done outside this list.
   - [x] 11.4 Read secrets from Secrets Manager at runtime (no committed secrets).
     - _Requirements: 6.5_
 
-- [ ] 12. Implement test validation (GitHub Actions)
-  - [ ] 12.1 Trigger the demo repo's workflow on the temp branch; poll workflow-run status/`conclusion` via the Actions API.
+- [x] 12. Implement test validation (GitHub Actions)
+  - [x] 12.1 Trigger the demo repo's workflow on the temp branch; poll workflow-run status/`conclusion` via the Actions API.
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
-  - [ ] 12.2 Report timeout and escalate to human on non-completion.
+  - [x] 12.2 Report timeout and escalate to human on non-completion.
     - _Requirements: 4.5_
-  - [ ] 12.3 Add local-sandbox `pytest` fallback returning the same result shape.
+  - [x] 12.3 Add local-sandbox `pytest` fallback returning the same result shape.
     - _Requirements: 4.6_
-  - [ ] 12.4 Unit test the `conclusion` → pass/fail mapping.
+  - [x] 12.4 Unit test the `conclusion` → pass/fail mapping.
     - _Requirements: 4.4_
 
 - [ ] 13. Implement the confidence gate + notifications
