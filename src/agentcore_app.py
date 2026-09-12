@@ -66,7 +66,7 @@ from typing import Any, Callable, Optional
 
 from src.main import DepGuardOrchestrator
 from src.models.bedrock_client import BedrockClient
-from src.tools import github_tools, validation_tools
+from src.tools import github_tools, notify_tools, validation_tools
 
 
 # --- BedrockAgentCoreApp import guard (task 11.1) -------------------------
@@ -200,6 +200,33 @@ def _resolve_github_token() -> Optional[str]:
     return _read_secret(secret_id)
 
 
+# The Slack incoming-webhook used by the notifier (task 13). Like the GitHub
+# token it is a secret read from Secrets Manager at runtime (never committed),
+# with an env override for local runs. Optional — when unset the notifier falls
+# back to a PR comment (notify_tools.notify).
+ENV_SLACK_WEBHOOK = "SLACK_WEBHOOK_URL"
+ENV_SLACK_WEBHOOK_SECRET_ID = "SLACK_WEBHOOK_SECRET_ID"
+DEFAULT_SLACK_WEBHOOK_SECRET_ID = "lusiscan/slack-webhook"
+
+
+def _resolve_slack_webhook() -> Optional[str]:
+    """Resolve the Slack webhook URL, preferring an env override then Secrets Manager.
+
+    Resolution order: ``SLACK_WEBHOOK_URL`` env (local runs) → Secrets Manager
+    ``lusiscan/slack-webhook`` (id overridable via ``SLACK_WEBHOOK_SECRET_ID``),
+    which is scoped by the runtime role's IAM policy (R6.5). Returns ``None`` when
+    neither yields a value; the notifier then falls back to a PR comment. The
+    webhook URL is never logged.
+    """
+    env_webhook = os.environ.get(ENV_SLACK_WEBHOOK)
+    if env_webhook:
+        return env_webhook
+    secret_id = os.environ.get(
+        ENV_SLACK_WEBHOOK_SECRET_ID, DEFAULT_SLACK_WEBHOOK_SECRET_ID
+    )
+    return _read_secret(secret_id)
+
+
 def _fetch_repo_files(repo: str, github_token: Optional[str]) -> tuple[
     Optional[str],
     Optional[Callable[[dict], tuple[str, str]]],
@@ -305,6 +332,15 @@ def _build_orchestrator(repo: str, **overrides: Any) -> DepGuardOrchestrator:
     # same token/Secrets-Manager resolution as the rest of the loop (R6.5).
     kwargs["validator"] = validation_tools.make_validator(
         repo, token=github_token, local_fallback_dir=repo_path
+    )
+
+    # Notifier (task 13): after each migration is persisted, surface the human
+    # decision — a Slack webhook when configured, else a PR comment (R5.1/5.2/5.3).
+    # The webhook is a secret resolved from Secrets Manager at runtime (R6.5).
+    kwargs["notifier"] = notify_tools.Notifier(
+        repo,
+        slack_webhook=_resolve_slack_webhook(),
+        github_token=github_token,
     )
 
     kwargs.update(overrides)

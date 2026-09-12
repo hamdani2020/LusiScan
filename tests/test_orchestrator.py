@@ -622,3 +622,157 @@ def test_validate_branch_uses_injected_validator_seam() -> None:
     injected = main.validate_branch("b", validator=fake_validator)
     assert injected["status"] == main.VALIDATION_PASSED
     assert "ci green on b" in injected["details"]
+
+
+# --- Confidence gate + notifications (task 13, R5.1/5.2/5.3) ---------------
+
+
+class _ConfigurableNovaModel:
+    """A fake Nova client returning a caller-supplied plan for every package."""
+
+    def __init__(self, plan: dict) -> None:
+        self._plan = plan
+
+    def summarize(self, prompt: str) -> str:
+        return "summary"
+
+    def converse_json(self, prompt: str, **kwargs) -> dict:
+        return dict(self._plan)
+
+
+class _RecordingNotifier:
+    """Records every migration it is called with (mimics notify_tools.Notifier)."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def __call__(self, migration: dict) -> dict:
+        self.calls.append(migration)
+        return {"channel": "test", "sent": True, "message": "noticed"}
+
+
+def _gate_orchestrator(plan: dict, notifier=None, repo=None) -> tuple:
+    """Build a stateless orchestrator with a configurable plan + notifier.
+
+    Returns ``(orchestrator, repo)`` where ``repo`` is the FakeRepository whose
+    ``created_pulls`` reveals whether a PR was opened.
+    """
+    repo = repo or FakeRepository()
+    orch = DepGuardOrchestrator(
+        REPO,
+        planner_model=_ConfigurableNovaModel(plan),
+        github_client=FakeGithub(repo),
+        source_provider=_source_provider,
+        manifest_provider=_manifest_provider,
+        notifier=notifier,
+        # A validator that always reports green so the ready/guided tiers are
+        # deterministic (the gate logic, not CI, is under test here).
+        validator=lambda branch: {"status": main.VALIDATION_PASSED, "details": "green"},
+    )
+    return orch, repo
+
+
+_ONE_OUTDATED = {
+    "repo_path": REPO,
+    "outdated": [{"name": "requests", "current": "2.31.0", "latest": "2.34.2"}],
+    "errors": [],
+}
+
+
+@pytest.fixture
+def stub_scan_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.tools import package_tools
+
+    monkeypatch.setattr(
+        package_tools, "scan_packages", lambda repo_path, **kw: dict(_ONE_OUTDATED)
+    )
+
+
+def test_human_required_opens_no_pr_and_notifies(stub_scan_one) -> None:
+    # R5.3: an architectural upgrade must NOT touch code or open a PR — only
+    # notify. The migration is still persisted as pending_review.
+    notifier = _RecordingNotifier()
+    plan = {
+        "confidence": "low",
+        "strategy": "human_required",
+        "estimated_risk": "high",
+        "breaking_changes": ["Config -> model_config", "BaseSettings moved"],
+        "reasoning": "Major upgrade needs architectural decisions.",
+    }
+    orch, repo = _gate_orchestrator(plan, notifier=notifier)
+
+    summary = orch.run()
+
+    # No PR was opened and no code changes were produced (code untouched, R5.3).
+    assert repo.created_pulls == []
+    migration = summary["migrations"][0]
+    assert migration["pr_url"] is None
+    assert migration["pr_number"] is None
+    assert migration["strategy"] == "human_required"
+    assert migration["diff"] == ""
+    # The planner's breaking changes are surfaced as flagged for review.
+    assert len(migration["flagged"]) == 2
+    # The human was notified exactly once.
+    assert len(notifier.calls) == 1
+
+
+def test_high_confidence_passing_tests_opens_pr_and_notifies(stub_scan_one) -> None:
+    # R5.1: high confidence + tests pass → a PR is opened and the human notified.
+    notifier = _RecordingNotifier()
+    plan = {
+        "confidence": "high",
+        "strategy": "auto_fix",
+        "estimated_risk": "low",
+        "breaking_changes": [],
+        "reasoning": "Safe bump.",
+    }
+    orch, repo = _gate_orchestrator(plan, notifier=notifier)
+
+    summary = orch.run()
+
+    # A PR was opened (the version bump has changes to commit).
+    assert len(repo.created_pulls) == 1
+    migration = summary["migrations"][0]
+    assert migration["pr_number"] is not None
+    assert migration["test_summary"]["status"] == main.VALIDATION_PASSED
+    assert len(notifier.calls) == 1
+    # The notified migration carries the ready-tier signals.
+    notified = notifier.calls[0]
+    assert notified["confidence"] == "high"
+    assert notified["test_summary"]["status"] == main.VALIDATION_PASSED
+
+
+def test_low_confidence_opens_guided_pr_and_notifies(stub_scan_one) -> None:
+    # R5.2: low confidence → a guided PR is opened and the human notified.
+    notifier = _RecordingNotifier()
+    plan = {
+        "confidence": "low",
+        "strategy": "guided_pr",
+        "estimated_risk": "medium",
+        "breaking_changes": ["some deprecation"],
+        "reasoning": "Needs judgement.",
+    }
+    orch, repo = _gate_orchestrator(plan, notifier=notifier)
+
+    summary = orch.run()
+
+    assert len(repo.created_pulls) == 1
+    migration = summary["migrations"][0]
+    assert migration["pr_number"] is not None
+    assert migration["confidence"] == "low"
+    assert len(notifier.calls) == 1
+
+
+def test_no_notifier_is_a_noop(stub_scan_one) -> None:
+    # The notifier is optional: with none injected the loop still completes.
+    plan = {
+        "confidence": "high",
+        "strategy": "auto_fix",
+        "estimated_risk": "low",
+        "breaking_changes": [],
+        "reasoning": "Safe bump.",
+    }
+    orch, _repo = _gate_orchestrator(plan, notifier=None)
+    summary = orch.run()
+    assert summary["outcome"] == "completed"
+    assert summary["migrations"][0]["pr_number"] is not None

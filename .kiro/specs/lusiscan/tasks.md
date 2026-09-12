@@ -98,12 +98,12 @@ filling the Devpost form are done outside this list.
   - [x] 12.4 Unit test the `conclusion` → pass/fail mapping.
     - _Requirements: 4.4_
 
-- [ ] 13. Implement the confidence gate + notifications
-  - [ ] 13.1 High confidence + tests pass → auto-PR + "ready to approve" notice; low confidence → guided PR with flagged changes.
+- [x] 13. Implement the confidence gate + notifications
+  - [x] 13.1 High confidence + tests pass → auto-PR + "ready to approve" notice; low confidence → guided PR with flagged changes.
     - _Requirements: 5.1, 5.2_
-  - [ ] 13.2 `human_required` → notify without touching code.
+  - [x] 13.2 `human_required` → notify without touching code.
     - _Requirements: 5.3_
-  - [ ] 13.3 Send a plain notification (Slack webhook or PR comment).
+  - [x] 13.3 Send a plain notification (Slack webhook or PR comment).
     - _Requirements: 5.1, 5.2_
 
 - [ ] 14. Build the Streamlit control panel

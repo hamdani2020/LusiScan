@@ -164,6 +164,12 @@ def test_build_orchestrator_reads_config_from_env(monkeypatch):
     monkeypatch.setattr(agentcore_app, "DepGuardOrchestrator", RecordingOrchestrator)
     monkeypatch.setenv(agentcore_app.ENV_STATE_TABLE, "lusiscan-state")
     monkeypatch.setenv(agentcore_app.ENV_GITHUB_TOKEN, "placeholder-token")
+    # Keep hermetic: don't touch real GitHub (repo fetch) or Secrets Manager
+    # (Slack webhook resolution) while building the orchestrator.
+    monkeypatch.setattr(
+        agentcore_app, "_fetch_repo_files", lambda repo, token: (None, None, None)
+    )
+    monkeypatch.setattr(agentcore_app, "_read_secret", lambda secret_id: None)
 
     agentcore_app._build_orchestrator("owner/repo")
 
@@ -185,8 +191,12 @@ def test_build_orchestrator_omits_missing_config(monkeypatch):
     monkeypatch.delenv(agentcore_app.ENV_STATE_TABLE_FALLBACK, raising=False)
     monkeypatch.delenv(agentcore_app.ENV_GITHUB_TOKEN, raising=False)
     # Keep the test hermetic: with GITHUB_TOKEN unset the resolver would fall
-    # through to Secrets Manager (a live AWS call), so stub the SM read to None.
+    # through to Secrets Manager (a live AWS call), so stub the SM read to None,
+    # and stub the GitHub repo fetch so no network call is made.
     monkeypatch.setattr(agentcore_app, "_read_secret", lambda secret_id: None)
+    monkeypatch.setattr(
+        agentcore_app, "_fetch_repo_files", lambda repo, token: (None, None, None)
+    )
 
     agentcore_app._build_orchestrator("owner/repo")
 

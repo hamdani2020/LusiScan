@@ -332,6 +332,10 @@ class DepGuardOrchestrator:
             no ``github_client`` is injected.
         validator: Injected Validator callable ``(branch) -> {"status",
             "details"}``. Defaults to the task-12 stub :func:`_stub_validator`.
+        notifier: Optional notifier callable ``(migration) -> result`` (e.g.
+            ``notify_tools.Notifier``) invoked after a migration is persisted to
+            surface the human decision (R5.1/5.2/5.3). No-op when omitted; it
+            never raises, so it cannot break the loop.
         repo_path: Filesystem path the Monitor scans. Defaults to ``repo_name``.
         source_provider: Optional callable ``(plan) -> {filename: source}``
             giving the Executor the source files to transform for a migration.
@@ -354,6 +358,7 @@ class DepGuardOrchestrator:
         github_client: Any | None = None,
         github_token: Optional[str] = None,
         validator: Optional[Validator] = None,
+        notifier: Optional[Callable[[dict], Any]] = None,
         repo_path: Optional[str] = None,
         source_provider: Optional[Callable[[dict], dict[str, str]]] = None,
         manifest_provider: Optional[Callable[[dict], tuple[str, str]]] = None,
@@ -377,6 +382,7 @@ class DepGuardOrchestrator:
         self.github_client = github_client
         self.github_token = github_token
         self.validator = validator or _stub_validator
+        self.notifier = notifier
         self.source_provider = source_provider
         self.manifest_provider = manifest_provider
         self.open_prs = open_prs
@@ -593,6 +599,17 @@ class DepGuardOrchestrator:
         )
         plan = plan_migration(changelog, model=self.planner_model)
 
+        # --- Confidence gate (task 13.1/13.2, R5.1/5.2/5.3) ------------------
+        #
+        # ``human_required`` means the upgrade needs an architectural decision:
+        # LusiScan must NOT modify code or open a PR — it only surfaces the
+        # decision to a human (R5.3). Every other strategy runs the full
+        # Executor → Validator path and then notifies with the right tier
+        # (ready-to-approve for high confidence + passing tests, R5.1; guided for
+        # low confidence, R5.2).
+        if plan.get("strategy") == planner_agent.STRATEGY_HUMAN_REQUIRED:
+            return self._process_human_required(package, current, target, plan)
+
         # Executor: apply the scoped refactor (version bump + auto-fixes).
         source_files = (
             self.source_provider(plan) if self.source_provider is not None else None
@@ -623,7 +640,7 @@ class DepGuardOrchestrator:
         validation = validate_branch(branch or "", validator=self.validator)
 
         # Persist as a pending_review migration (R6.3, design.md → step 6).
-        return self._persist_migration(
+        migration = self._persist_migration(
             package=package,
             current=current,
             target=target,
@@ -632,6 +649,63 @@ class DepGuardOrchestrator:
             pr=pr,
             validation=validation,
         )
+
+        # Notify the human with the right tier (R5.1 ready-to-approve when high
+        # confidence + tests pass; R5.2 guided otherwise). Notification never
+        # raises (notify_tools swallows delivery errors), so it cannot break the
+        # loop.
+        self._notify(migration)
+        return migration
+
+    def _process_human_required(
+        self, package: str, current: str, target: str, plan: dict
+    ) -> Optional[dict]:
+        """Handle a ``human_required`` migration without touching code (R5.3).
+
+        LusiScan does **not** apply any refactor, bump the manifest, or open a
+        PR for an architectural upgrade — it records the migration (with the
+        planner's flagged breaking changes) as ``pending_review`` and notifies a
+        human to make the call. The refactor/PR/validation fields are empty by
+        design so the state clearly reflects "code untouched".
+        """
+        empty_refactor = {
+            "package": package,
+            "strategy": planner_agent.STRATEGY_HUMAN_REQUIRED,
+            "changes": {},
+            "flagged": plan.get("breaking_changes", []),
+            "diff": "",
+            "applied": [],
+        }
+        migration = self._persist_migration(
+            package=package,
+            current=current,
+            target=target,
+            plan=plan,
+            refactor=empty_refactor,
+            pr={},  # no PR opened — code is left untouched (R5.3)
+            validation={
+                "status": VALIDATION_SKIPPED,
+                "details": "human_required: code untouched; no tests run",
+            },
+        )
+        self._notify(migration)
+        return migration
+
+    def _notify(self, migration: dict) -> Optional[dict]:
+        """Send a human notification for ``migration`` via the injected notifier.
+
+        No-op when no notifier is configured. Delegates to the notifier callable
+        (``notify_tools.Notifier`` at runtime), which never raises — any delivery
+        failure is captured in the returned result, so notification can never
+        bring down the agent loop.
+        """
+        if self.notifier is None:
+            return None
+        try:
+            return self.notifier(migration)
+        except Exception:  # noqa: BLE001 - defensive; notifier already never raises
+            return None
+
 
     def _open_pr(self, migration_view: dict) -> dict:
         """Open a PR for a processed migration, or return an empty result.
