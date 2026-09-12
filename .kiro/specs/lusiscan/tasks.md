@@ -78,14 +78,14 @@ filling the Devpost form are done outside this list.
   - [x] 10.3 Integration test: full loop locally on both demo packages.
     - _Requirements: 9.4_
 
-- [ ] 11. Deploy to AgentCore Runtime (do this as soon as task 10 works)
+- [x] 11. Deploy to AgentCore Runtime (do this as soon as task 10 works)
   - [x] 11.1 Add `src/agentcore_app.py` (`BedrockAgentCoreApp` + `@app.entrypoint`); test locally on `:8080`.
     - _Requirements: 6.1, 6.2_
   - [x] 11.2 `agentcore configure` + `agentcore launch`; grant the runtime role Bedrock, Secrets Manager, and DynamoDB access.
     - _Requirements: 6.1, 6.5_
   - [x] 11.3 `agentcore invoke` both demo scenarios end-to-end on the live runtime; fix packaging/IAM issues.
     - _Requirements: 6.2, 9.4_
-  - [ ] 11.4 Read secrets from Secrets Manager at runtime (no committed secrets).
+  - [x] 11.4 Read secrets from Secrets Manager at runtime (no committed secrets).
     - _Requirements: 6.5_
 
 - [ ] 12. Implement test validation (GitHub Actions)

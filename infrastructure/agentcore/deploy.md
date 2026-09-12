@@ -79,10 +79,14 @@ aws secretsmanager create-secret \
 > to the `aws secretsmanager` call above (ideally via `--secret-string file://...`
 > pointing at an untracked file), or set them through the AWS console.
 
-The application reads the resolved values at runtime from the environment the
-runtime injects (`GITHUB_TOKEN`, and the table name from `DEPGUARD_STATE_TABLE`
-/ `STATE_TABLE_NAME`) — see the config section in `src/agentcore_app.py`. No
-secret material is read, logged, or committed by the code.
+At runtime the application resolves the GitHub token **directly from Secrets
+Manager** (secret `lusiscan/github-token`, id overridable via the
+`GITHUB_TOKEN_SECRET_ID` env var) via `secretsmanager:GetSecretValue`, and reads
+the table name from `DEPGUARD_STATE_TABLE` / `STATE_TABLE_NAME` — see
+`_resolve_github_token` / `_read_secret` in `src/agentcore_app.py`. For local
+runs you can instead export `GITHUB_TOKEN`; the resolver prefers that env var and
+only falls back to Secrets Manager when it is unset. No secret material is read,
+logged, or committed by the code (R6.5).
 
 ---
 
@@ -144,12 +148,13 @@ records config (entrypoint, role ARN, region) — **not** secrets.
 
 ## Step 4 — `agentcore launch`
 
-Build and deploy the runtime. Pass the **non-secret** runtime config as env
-vars (the state table name); secrets are resolved from Secrets Manager, not
-passed here.
+Build and deploy the runtime. Pass only the **non-secret** runtime config as env
+vars (region, and the state table name once it exists); the GitHub token is
+resolved from Secrets Manager at invoke time, never passed here.
 
 ```bash
 agentcore launch \
+  --env AWS_REGION=us-east-1 \
   --env DEPGUARD_STATE_TABLE=lusiscan-state
 ```
 

@@ -124,6 +124,81 @@ ENV_STATE_TABLE = "DEPGUARD_STATE_TABLE"
 ENV_STATE_TABLE_FALLBACK = "STATE_TABLE_NAME"
 ENV_GITHUB_TOKEN = "GITHUB_TOKEN"
 
+# --- Runtime secrets from AWS Secrets Manager (design.md → Security; R6.5) --
+#
+# The GitHub token is read from Secrets Manager **at invoke time** so nothing
+# sensitive is baked into the image or the runtime config. The secret id is
+# overridable (kept in sync with the IAM grant on ``lusiscan/github-token-*``).
+ENV_GITHUB_TOKEN_SECRET_ID = "GITHUB_TOKEN_SECRET_ID"
+DEFAULT_GITHUB_TOKEN_SECRET_ID = "lusiscan/github-token"
+
+
+def _read_secret(secret_id: str) -> Optional[str]:
+    """Return the string value of a Secrets Manager secret, or ``None``.
+
+    Reads ``secret_id`` via ``secretsmanager:GetSecretValue`` using the runtime
+    role's credentials (the IAM policy scopes this to ``lusiscan/github-token-*``
+    / ``lusiscan/slack-webhook-*``; R6.5). ``boto3`` is imported lazily so the
+    module stays importable — and unit-testable — without AWS installed.
+
+    The secret may be stored either as a raw token string or as a small JSON
+    object (``{"token": ...}`` / ``{"GITHUB_TOKEN": ...}``); both are supported.
+    Any failure (missing secret, no access, no boto3) degrades to ``None`` so a
+    misconfigured secret never crashes the runtime host — and the secret value
+    is **never** logged.
+    """
+    try:
+        import json
+
+        import boto3  # noqa: PLC0415 - intentional lazy import (see docstring)
+
+        client = boto3.client(
+            "secretsmanager", region_name=os.environ.get("AWS_REGION")
+        )
+        secret_string = client.get_secret_value(SecretId=secret_id).get(
+            "SecretString"
+        )
+        if not secret_string:
+            return None
+
+        # Accept either a raw string or a JSON object with a token field.
+        try:
+            parsed = json.loads(secret_string)
+        except (ValueError, TypeError):
+            return secret_string.strip()
+        if isinstance(parsed, dict):
+            for key in ("token", "GITHUB_TOKEN", "github_token", "value"):
+                if parsed.get(key):
+                    return str(parsed[key]).strip()
+            return None
+        return str(parsed).strip()
+    except Exception:  # noqa: BLE001 - any failure degrades to no token (R6.2/6.5)
+        return None
+
+
+def _resolve_github_token() -> Optional[str]:
+    """Resolve the GitHub token, preferring Secrets Manager at runtime (R6.5).
+
+    Resolution order, most-explicit first:
+
+    1. ``GITHUB_TOKEN`` env var — an explicit override for local runs (and the
+       legacy ``agentcore launch --env`` path); handy for development.
+    2. AWS Secrets Manager ``lusiscan/github-token`` (id overridable via
+       ``GITHUB_TOKEN_SECRET_ID``) — the runtime path, so no secret is stored on
+       the runtime config or in the image.
+
+    Returns ``None`` when neither yields a token; GitHub calls then surface a
+    clear credential error rather than the entrypoint crashing. No secret value
+    is ever logged.
+    """
+    env_token = os.environ.get(ENV_GITHUB_TOKEN)
+    if env_token:
+        return env_token
+    secret_id = os.environ.get(
+        ENV_GITHUB_TOKEN_SECRET_ID, DEFAULT_GITHUB_TOKEN_SECRET_ID
+    )
+    return _read_secret(secret_id)
+
 
 def _fetch_repo_files(repo: str, github_token: Optional[str]) -> tuple[
     Optional[str],
@@ -189,16 +264,17 @@ def _fetch_repo_files(repo: str, github_token: Optional[str]) -> tuple[
 def _build_orchestrator(repo: str, **overrides: Any) -> DepGuardOrchestrator:
     """Construct the orchestrator for ``repo``, wiring runtime config from env.
 
-    Reads the DynamoDB table name and GitHub token from the environment and
-    forwards them to :class:`~src.main.DepGuardOrchestrator` (design.md →
-    Security; R6.5) — never hardcoding or logging secret material. Any keyword
-    in ``overrides`` wins over the env-derived defaults, which is the seam tests
-    use to inject a fake orchestrator/config without touching the environment.
+    Reads the DynamoDB table name from the environment and resolves the GitHub
+    token from AWS Secrets Manager (falling back to ``GITHUB_TOKEN`` for local
+    runs) — never hardcoding or logging secret material (design.md → Security;
+    R6.5). Any keyword in ``overrides`` wins over the env-derived defaults, which
+    is the seam tests use to inject a fake orchestrator/config without touching
+    the environment.
     """
     table_name = os.environ.get(ENV_STATE_TABLE) or os.environ.get(
         ENV_STATE_TABLE_FALLBACK
     )
-    github_token = os.environ.get(ENV_GITHUB_TOKEN)
+    github_token = _resolve_github_token()
 
     kwargs: dict[str, Any] = {
         "table_name": table_name,

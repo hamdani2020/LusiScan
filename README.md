@@ -93,12 +93,22 @@ agentcore configure --entrypoint src/agentcore_app.py --name lusiscan \
   --execution-role arn:aws:iam::<ACCOUNT>:role/LusiScanAgentCoreRuntimeRole \
   --requirements-file pyproject.toml --region us-east-1 --non-interactive
 
-# Build (CodeBuild) + deploy. Pass non-secret runtime config as --env.
-agentcore launch --env AWS_REGION=us-east-1 --env GITHUB_TOKEN=<token>
+# Build (CodeBuild) + deploy. Only non-secret runtime config is passed as --env.
+agentcore launch --env AWS_REGION=us-east-1
 ```
 
-> The GitHub token is passed via `--env` here for the demo. Task 11.4 moves it
-> to AWS Secrets Manager so nothing sensitive is stored on the runtime config.
+> The GitHub token is **not** passed on the command line. At invoke time the
+> runtime reads it from AWS Secrets Manager (secret `lusiscan/github-token`,
+> overridable via the `GITHUB_TOKEN_SECRET_ID` env var), so nothing sensitive is
+> stored on the runtime config or baked into the image (R6.5). Provision it once:
+>
+> ```bash
+> aws secretsmanager create-secret --name lusiscan/github-token \
+>   --secret-string file://<untracked-token-file> --region us-east-1
+> ```
+>
+> For local runs you can instead export `GITHUB_TOKEN` directly — the resolver
+> prefers that env var and only falls back to Secrets Manager when it is unset.
 
 ### Invoke the live runtime
 

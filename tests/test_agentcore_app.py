@@ -184,8 +184,115 @@ def test_build_orchestrator_omits_missing_config(monkeypatch):
     monkeypatch.delenv(agentcore_app.ENV_STATE_TABLE, raising=False)
     monkeypatch.delenv(agentcore_app.ENV_STATE_TABLE_FALLBACK, raising=False)
     monkeypatch.delenv(agentcore_app.ENV_GITHUB_TOKEN, raising=False)
+    # Keep the test hermetic: with GITHUB_TOKEN unset the resolver would fall
+    # through to Secrets Manager (a live AWS call), so stub the SM read to None.
+    monkeypatch.setattr(agentcore_app, "_read_secret", lambda secret_id: None)
 
     agentcore_app._build_orchestrator("owner/repo")
 
     assert captured["table_name"] is None
     assert captured["github_token"] is None
+
+
+# --- GitHub token from Secrets Manager at runtime (R6.5) ------------------
+
+
+class _FakeSecretsClient:
+    """Minimal stand-in for a boto3 ``secretsmanager`` client."""
+
+    def __init__(self, *, secret_string=None, raises=None) -> None:
+        self._secret_string = secret_string
+        self._raises = raises
+        self.requested_ids: list[str] = []
+
+    def get_secret_value(self, *, SecretId):
+        self.requested_ids.append(SecretId)
+        if self._raises is not None:
+            raise self._raises
+        return {"SecretString": self._secret_string}
+
+
+def _patch_boto3(monkeypatch, fake_client):
+    """Patch ``boto3.client`` (imported lazily inside ``_read_secret``)."""
+    import boto3
+
+    monkeypatch.setattr(boto3, "client", lambda service, **kw: fake_client)
+
+
+def test_resolve_github_token_prefers_env(monkeypatch):
+    """An explicit ``GITHUB_TOKEN`` env var wins over Secrets Manager."""
+    monkeypatch.setenv(agentcore_app.ENV_GITHUB_TOKEN, "env-token")
+    # If the resolver reached Secrets Manager this would blow up the test.
+    monkeypatch.setattr(
+        agentcore_app,
+        "_read_secret",
+        lambda secret_id: (_ for _ in ()).throw(AssertionError("should not read SM")),
+    )
+
+    assert agentcore_app._resolve_github_token() == "env-token"
+
+
+def test_resolve_github_token_reads_secrets_manager_when_env_absent(monkeypatch):
+    """With no env var, the token is read from the default SM secret id."""
+    monkeypatch.delenv(agentcore_app.ENV_GITHUB_TOKEN, raising=False)
+    monkeypatch.delenv(agentcore_app.ENV_GITHUB_TOKEN_SECRET_ID, raising=False)
+    seen: dict = {}
+
+    def fake_read(secret_id):
+        seen["secret_id"] = secret_id
+        return "sm-token"
+
+    monkeypatch.setattr(agentcore_app, "_read_secret", fake_read)
+
+    assert agentcore_app._resolve_github_token() == "sm-token"
+    assert seen["secret_id"] == agentcore_app.DEFAULT_GITHUB_TOKEN_SECRET_ID
+
+
+def test_resolve_github_token_honors_custom_secret_id(monkeypatch):
+    """``GITHUB_TOKEN_SECRET_ID`` overrides which secret is read."""
+    monkeypatch.delenv(agentcore_app.ENV_GITHUB_TOKEN, raising=False)
+    monkeypatch.setenv(agentcore_app.ENV_GITHUB_TOKEN_SECRET_ID, "custom/token")
+    seen: dict = {}
+    monkeypatch.setattr(
+        agentcore_app, "_read_secret", lambda secret_id: seen.setdefault("id", secret_id)
+    )
+
+    agentcore_app._resolve_github_token()
+    assert seen["id"] == "custom/token"
+
+
+def test_read_secret_returns_raw_string(monkeypatch):
+    """A raw (non-JSON) secret string is returned verbatim (trimmed)."""
+    _patch_boto3(monkeypatch, _FakeSecretsClient(secret_string="  ghp_raw123  "))
+    assert agentcore_app._read_secret("lusiscan/github-token") == "ghp_raw123"
+
+
+def test_read_secret_parses_json_token_field(monkeypatch):
+    """A JSON secret object is parsed for a recognized token field."""
+    _patch_boto3(
+        monkeypatch, _FakeSecretsClient(secret_string='{"token": "ghp_json456"}')
+    )
+    assert agentcore_app._read_secret("lusiscan/github-token") == "ghp_json456"
+
+
+def test_read_secret_parses_github_token_json_key(monkeypatch):
+    """The ``GITHUB_TOKEN`` JSON key is also recognized."""
+    _patch_boto3(
+        monkeypatch,
+        _FakeSecretsClient(secret_string='{"GITHUB_TOKEN": "ghp_key789"}'),
+    )
+    assert agentcore_app._read_secret("lusiscan/github-token") == "ghp_key789"
+
+
+def test_read_secret_returns_none_on_client_error(monkeypatch):
+    """Any Secrets Manager failure degrades to ``None`` (never crashes)."""
+    _patch_boto3(
+        monkeypatch, _FakeSecretsClient(raises=RuntimeError("AccessDenied"))
+    )
+    assert agentcore_app._read_secret("lusiscan/github-token") is None
+
+
+def test_read_secret_returns_none_on_empty(monkeypatch):
+    """An empty ``SecretString`` yields ``None``."""
+    _patch_boto3(monkeypatch, _FakeSecretsClient(secret_string=""))
+    assert agentcore_app._read_secret("lusiscan/github-token") is None
